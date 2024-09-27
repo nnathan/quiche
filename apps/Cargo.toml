@@ -28,9 +28,11 @@ url = "1"
 log = "0.4"
 octets = { version = "0.3", path = "../octets" }
 ring = "0.17"
-quiche = { path = "../quiche" }
+quiche = { path = "../quiche", features = ["boringssl-boring-crate"] }
 libc = "0.2"
 nix = { version = "0.27", features = ["net", "socket", "uio"] }
+base64 = "0.22.1"
+boring = "4.10.3"
 
 [lib]
 crate-type = ["lib"]

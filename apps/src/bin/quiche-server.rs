@@ -49,6 +49,9 @@ use quiche_apps::common::*;
 
 use quiche_apps::sendto::*;
 
+use base64::prelude::*;
+use boring::ssl::SslMethod;
+
 const MAX_BUF_SIZE: usize = 65507;
 
 const MAX_DATAGRAM_SIZE: usize = 1350;
@@ -101,10 +104,26 @@ fn main() {
     trace!("GSO detected: {}", enable_gso);
 
     // Create the configuration for the QUIC connections.
-    let mut config = quiche::Config::new(quiche::PROTOCOL_VERSION).unwrap();
+    let mut config: quiche::Config;
 
-    config.load_cert_chain_from_pem_file(&args.cert).unwrap();
-    config.load_priv_key_from_pem_file(&args.key).unwrap();
+    if let Some(psk) = args.psk.as_ref()
+    {
+        let server_psk_bytes = BASE64_STANDARD.decode(psk).unwrap();
+        info!("server_psk_bytes: {}", psk);
+
+        let mut boring_ssl_context = boring::ssl::SslContextBuilder::new(SslMethod::tls()).unwrap();
+        boring_ssl_context.set_psk_server_callback(
+            move |_ssl_context, _identity_bytes, psk_bytes| {
+                psk_bytes[..server_psk_bytes.len()].clone_from_slice(&server_psk_bytes[..]);
+                Ok(psk_bytes.len())
+            },
+        );
+        config = quiche::Config::with_boring_ssl_ctx_builder(quiche::PROTOCOL_VERSION, boring_ssl_context).unwrap();
+    } else {
+        config = quiche::Config::new(quiche::PROTOCOL_VERSION).unwrap();
+        config.load_cert_chain_from_pem_file(&args.cert).unwrap();
+        config.load_priv_key_from_pem_file(&args.key).unwrap();
+    }
 
     config.set_application_protos(&conn_args.alpns).unwrap();
 

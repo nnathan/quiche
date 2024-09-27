@@ -37,6 +37,9 @@ use std::cell::RefCell;
 
 use ring::rand::*;
 
+use base64::prelude::*;
+use boring::ssl::SslMethod;
+
 const MAX_DATAGRAM_SIZE: usize = 1350;
 
 #[derive(Debug)]
@@ -99,7 +102,26 @@ pub fn connect(
     };
 
     // Create the configuration for the QUIC connection.
-    let mut config = quiche::Config::new(args.version).unwrap();
+    let mut config: quiche::Config;
+
+    if let Some(psk) = args.psk.as_ref() {
+        let client_identity = "Client";
+        let client_psk_bytes = BASE64_STANDARD.decode(psk).unwrap();
+
+        let mut boring_ssl_context = boring::ssl::SslContextBuilder::new(SslMethod::tls()).unwrap();
+
+        boring_ssl_context.set_psk_client_callback(
+            move |_ssl_context, _identity_hint, identity_bytes, psk_bytes| {
+                identity_bytes[..client_identity.len()].clone_from_slice(&client_identity.as_bytes()[..]);
+                identity_bytes[client_identity.len()] = 0;
+                psk_bytes[..client_psk_bytes.len()].clone_from_slice(&client_psk_bytes[..]);
+                Ok(psk_bytes.len())
+            },
+        );
+        config = quiche::Config::with_boring_ssl_ctx_builder(quiche::PROTOCOL_VERSION, boring_ssl_context).unwrap();
+    } else {
+        config = quiche::Config::new(args.version).unwrap();
+    }
 
     if let Some(ref trust_origin_ca_pem) = args.trust_origin_ca_pem {
         config

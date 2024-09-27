@@ -289,6 +289,7 @@ Options:
   --session-file PATH      File used to cache a TLS session for resumption.
   --source-port PORT       Source port to use when connecting to the server [default: 0].
   --initial-cwnd-packets PACKETS   The initial congestion window size in terms of packet count [default: 10].
+  --psk STRING      32-byte pre-shared key encoded in Base64
   -h --help                Show this screen.
 ";
 
@@ -309,6 +310,7 @@ pub struct ClientArgs {
     pub source_port: u16,
     pub perform_migration: bool,
     pub send_priority_update: bool,
+    pub psk: Option<String>,
 }
 
 impl Args for ClientArgs {
@@ -386,6 +388,12 @@ impl Args for ClientArgs {
 
         let send_priority_update = args.get_bool("--send-priority-update");
 
+        let psk = if args.get_str("--psk") != "" {
+            Some(args.get_str("--psk").to_string())
+        } else {
+            None
+        };
+
         ClientArgs {
             version,
             dump_response_path,
@@ -402,6 +410,7 @@ impl Args for ClientArgs {
             source_port,
             perform_migration,
             send_priority_update,
+            psk,
         }
     }
 }
@@ -424,6 +433,7 @@ impl Default for ClientArgs {
             source_port: 0,
             perform_migration: false,
             send_priority_update: false,
+            psk: None,
         }
     }
 }
@@ -464,6 +474,7 @@ Options:
   --disable-gso               Disable GSO (linux only).
   --disable-pacing            Disable pacing (linux only).
   --initial-cwnd-packets PACKETS      The initial congestion window size in terms of packet count [default: 10].
+  --psk STRING      32-byte pre-shared key encoded in Base64
   -h --help                   Show this screen.
 ";
 
@@ -478,6 +489,7 @@ pub struct ServerArgs {
     pub disable_gso: bool,
     pub disable_pacing: bool,
     pub enable_pmtud: bool,
+    pub psk: Option<String>,
 }
 
 impl Args for ServerArgs {
@@ -494,6 +506,12 @@ impl Args for ServerArgs {
         let disable_pacing = args.get_bool("--disable-pacing");
         let enable_pmtud = args.get_bool("--enable-pmtud");
 
+        let psk = if args.get_str("--psk") != "" {
+            Some(args.get_str("--psk").to_string())
+        } else {
+            None
+        };
+
         ServerArgs {
             listen,
             no_retry,
@@ -504,6 +522,7 @@ impl Args for ServerArgs {
             disable_gso,
             disable_pacing,
             enable_pmtud,
+            psk,
         }
     }
 }
